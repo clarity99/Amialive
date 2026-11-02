@@ -1,0 +1,23 @@
+services:
+  amialive:
+    image: ghcr.io/clarity99/amialive:latest
+    # build: .          # uncomment to build locally instead of pulling
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - amialive-data:/data
+      - ./contacts.json:/config/contacts.json:ro
+    # Only needed for the email check-in link; put a TLS reverse proxy in front.
+    # ports:
+    #   - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "/amialive", "-healthcheck"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+volumes:
+  amialive-data:
