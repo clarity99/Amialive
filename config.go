@@ -43,7 +43,6 @@ type Config struct {
 
 	HTTPAddr  string
 	BaseURL   string
-	Secret    string
 	Heartbeat string
 }
 
@@ -77,7 +76,6 @@ func LoadConfig() (*Config, []Contact, error) {
 		BulkGateSenderValue: env("BULKGATE_SENDER_ID_VALUE", ""),
 		HTTPAddr:            env("HTTP_ADDR", ":8080"),
 		BaseURL:             strings.TrimRight(env("BASE_URL", ""), "/"),
-		Secret:              env("CHECKIN_SECRET", ""),
 		Heartbeat:           env("HEARTBEAT_URL", ""),
 	}
 
@@ -105,8 +103,8 @@ func LoadConfig() (*Config, []Contact, error) {
 			bad("TELEGRAM_CHAT_ID must be an integer")
 		}
 	}
-	if c.BaseURL != "" && len(c.Secret) < 16 {
-		bad("CHECKIN_SECRET (>=16 chars) is required when BASE_URL is set")
+	if c.BaseURL != "" && !strings.HasPrefix(c.BaseURL, "https://") {
+		bad("BASE_URL must start with https://")
 	}
 
 	contacts, err := loadContacts(c.ContactsFile)

@@ -24,18 +24,24 @@ type State struct {
 
 func loadState(path string) (State, error) {
 	var s State
-	b, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return s, nil
-	}
-	if err != nil {
-		return s, err
-	}
-	return s, json.Unmarshal(b, &s)
+	err := loadJSON(path, &s)
+	return s, err
 }
 
-func saveState(path string, s State) error {
-	b, err := json.MarshalIndent(s, "", "  ")
+// loadJSON reads path into v; a missing file leaves v untouched.
+func loadJSON(path string, v any) error {
+	b, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, v)
+}
+
+func saveState(path string, v any) error {
+	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}

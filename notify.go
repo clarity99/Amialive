@@ -182,15 +182,22 @@ func (a *Alerter) Alert(c Contact, m Message) error {
 	return errors.Join(errs...)
 }
 
-// EmailUser prompts the monitored user by email with a one-click check-in link.
+// EmailUser prompts the monitored user by email. Each prompt carries its own
+// single-use check-in link.
 type EmailUser struct {
-	Mail *Mailer
-	To   string
-	Link string
+	Mail    *Mailer
+	To      string
+	BaseURL string
+	Tokens  *TokenStore
 }
 
 func (u *EmailUser) Ask(text string) error {
-	return u.Mail.Send(u.To, "Amialive: are you OK?", text+"\n\nCheck in here:\n"+u.Link+"\n")
+	tok, err := u.Tokens.New()
+	if err != nil {
+		return err
+	}
+	return u.Mail.Send(u.To, "Amialive: are you OK?",
+		text+"\n\nCheck in here (single-use link):\n"+u.BaseURL+"/ok?t="+tok+"\n")
 }
 
 func (u *EmailUser) Tell(text string) error { return u.Mail.Send(u.To, "Amialive", text+"\n") }

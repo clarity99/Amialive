@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -76,14 +77,22 @@ func main() {
 			users = append(users, bot)
 		}
 	}
+	var tokens *TokenStore
 	if cfg.UserEmail != "" && mailer != nil && cfg.BaseURL != "" {
-		users = append(users, &EmailUser{Mail: mailer, To: cfg.UserEmail, Link: checkinLink(cfg.BaseURL, cfg.Secret)})
+		if tokens, err = NewTokenStore(filepath.Join(cfg.DataDir, "tokens.json")); err != nil {
+			log.Error("token store", "err", err)
+			os.Exit(1)
+		}
+		engine.OnCheckIn = tokens.RevokeAll
+		users = append(users, &EmailUser{Mail: mailer, To: cfg.UserEmail, BaseURL: cfg.BaseURL, Tokens: tokens})
+	} else if cfg.UserEmail != "" || cfg.BaseURL != "" {
+		log.Warn("email check-in disabled: needs USER_EMAIL, BASE_URL and SMTP_* together")
 	}
 	engine.users = users
 
 	setupOnly := len(users) == 0
 	if setupOnly && bot == nil {
-		log.Error("no check-in channel configured: set TELEGRAM_BOT_TOKEN (+TELEGRAM_CHAT_ID) and/or USER_EMAIL+BASE_URL+CHECKIN_SECRET")
+		log.Error("no check-in channel configured: set TELEGRAM_BOT_TOKEN (+TELEGRAM_CHAT_ID) and/or USER_EMAIL+BASE_URL+SMTP_*")
 		os.Exit(2)
 	}
 	if setupOnly {
@@ -98,7 +107,7 @@ func main() {
 	var wg sync.WaitGroup
 	run := func(f func()) { wg.Add(1); go func() { defer wg.Done(); f() }() }
 
-	srv := NewWebServer(cfg.HTTPAddr, secretIfEmail(cfg), engine)
+	srv := NewWebServer(cfg.HTTPAddr, tokens, engine)
 	run(func() {
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			log.Error("http server", "err", err)
@@ -132,13 +141,6 @@ func main() {
 	defer cancel()
 	_ = srv.Shutdown(sctx)
 	wg.Wait()
-}
-
-func secretIfEmail(cfg *Config) string {
-	if cfg.BaseURL == "" {
-		return ""
-	}
-	return cfg.Secret
 }
 
 // heartbeat pings an external dead-man's-switch (e.g. healthchecks.io) so you

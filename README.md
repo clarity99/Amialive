@@ -21,7 +21,7 @@ Telegram commands: `/ok`, `/status`, `/pause <days>` (holiday mode), `/resume`.
 | Channel | Verdict |
 |---|---|
 | **Telegram bot** (default) | Free, reliable push, one-tap button, and it needs only *outbound* connections (long polling): no public URL, TLS or port-forward on your home arm64 box. |
-| Email magic link (optional fallback) | Independent of any messenger, so it covers a Telegram outage. Needs a public HTTPS URL. The link opens a confirm page; the check-in is a POST so mail scanners can't trigger it. |
+| Email magic link (optional fallback) | Independent of any messenger, so it covers a Telegram outage. Needs an HTTPS URL. Each email has a single-use link that opens a confirm page; the check-in is a POST so mail scanners can't trigger it. |
 | Slack | Works via Socket Mode, but workspace-bound and easy to mute. Better for work than a personal safety net. |
 | PWA push | Most work for the least reliability: public HTTPS, VAPID keys, service worker, and iOS only pushes to installed PWAs. |
 
@@ -47,7 +47,9 @@ The example: `MISSED_CHECKINS=2`, `GRACE_PERIOD=4h` alerts only after two consec
 
 ### Email check-in link (optional)
 
-Set `USER_EMAIL`, `BASE_URL` (e.g. `https://alive.example.com`) and `CHECKIN_SECRET`, publish port 8080 behind a TLS reverse proxy.
+Set `USER_EMAIL` and `BASE_URL` (plus `SMTP_*`). Every prompt and reminder email contains its **own single-use link** with a random 256-bit token (only its hash is stored in `/data/tokens.json`). Opening the link shows an *I'm OK* button; pressing it (a POST, so mail scanners and prefetchers can't trigger it) checks you in. A token is used up by one check-in, expires after 48h, and **all outstanding links are revoked whenever you check in by any channel**.
+
+`compose.yaml` joins the external `proxy` network and carries Traefik 3 labels for `alive.h1t.robertivanc.com` (only `/ok` is routed). The entrypoint and cert resolver names default to `websecure` / `letsencrypt`; override with `TRAEFIK_ENTRYPOINT` / `TRAEFIK_CERTRESOLVER` in `.env`. Since the host is tailscale-only, your phone must be on the tailnet to open the link, and the certificate must come from a DNS-01 resolver (HTTP-01 can't reach a private host).
 
 ## Who watches the watcher?
 

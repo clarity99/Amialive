@@ -40,6 +40,9 @@ type Engine struct {
 	alert    AlertSender
 	log      *slog.Logger
 
+	// OnCheckIn, if set, runs after every successful check-in (used to revoke email links).
+	OnCheckIn func()
+
 	dirty         bool
 	lastSavedTick time.Time
 }
@@ -203,6 +206,9 @@ func (e *Engine) checkIn(now time.Time, via string) string {
 	e.dirty = true
 	e.flush(now)
 	e.log.Info("check-in", "via", via)
+	if e.OnCheckIn != nil {
+		e.OnCheckIn()
+	}
 
 	reply := "✅ Thanks, you're checked in. Next check-in: " + e.fmtTime(e.nextPrompt(now))
 	if wasAlerted {
