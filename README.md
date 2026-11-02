@@ -9,7 +9,7 @@ Go, standard library only, one static binary, runs under Docker Compose on arm64
 
 1. At `CHECKIN_TIME` it sends you a prompt with an **I'm OK** button (Telegram).
 2. Until you answer it re-pings every `REMINDER_INTERVAL`, and tells you exactly when contacts will be alerted.
-3. If you haven't answered `GRACE_PERIOD` after the `MISSED_CHECKINS`-th unanswered prompt, every contact is alerted by email (SMTP) and SMS (Twilio). Failed deliveries are retried every minute.
+3. If you haven't answered `GRACE_PERIOD` after the `MISSED_CHECKINS`-th unanswered prompt, every contact is alerted by email (SMTP) and SMS (BulkGate). Failed deliveries are retried every minute.
 4. When you check in afterwards, contacts get an **all-clear**.
 
 Safety details: state survives restarts; if Amialive itself was offline, the grace period restarts instead of raising a false alarm; check-ins from anyone but your Telegram chat are ignored.

@@ -37,7 +37,7 @@ func main() {
 		log.Error("invalid configuration", "err", err)
 		os.Exit(2)
 	}
-	mailer, sms := NewMailer(cfg), NewTwilio(cfg)
+	mailer, sms := NewMailer(cfg), NewBulkGate(cfg)
 	alerter := &Alerter{Mail: mailer, SMS: sms, Log: log}
 
 	if *testContacts {
@@ -89,7 +89,7 @@ func main() {
 	if setupOnly {
 		log.Warn("TELEGRAM_CHAT_ID not set: setup mode. Send /start to the bot to learn your chat ID; no check-ins run until it is set.")
 	} else if mailer == nil && sms == nil {
-		log.Error("no alert channel configured: set SMTP_* and/or TWILIO_*")
+		log.Error("no alert channel configured: set SMTP_* and/or BULKGATE_*")
 		os.Exit(2)
 	}
 

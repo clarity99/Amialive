@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"net/smtp"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -92,30 +93,54 @@ func (m *Mailer) Send(to, subject, body string) error {
 	return c.Quit()
 }
 
-// Twilio sends SMS through the Twilio REST API.
-type Twilio struct{ sid, token, from string }
+const bulkGateURL = "https://portal.bulkgate.com/api/1.0/simple/transactional"
 
-func NewTwilio(c *Config) *Twilio {
-	if c.TwilioSID == "" || c.TwilioToken == "" || c.TwilioFrom == "" {
+// BulkGate sends SMS through the BulkGate simple transactional API.
+type BulkGate struct{ id, token, sender, senderValue, endpoint string }
+
+func NewBulkGate(c *Config) *BulkGate {
+	if c.BulkGateID == "" || c.BulkGateToken == "" {
 		return nil
 	}
-	return &Twilio{c.TwilioSID, c.TwilioToken, c.TwilioFrom}
+	return &BulkGate{c.BulkGateID, c.BulkGateToken, c.BulkGateSender, c.BulkGateSenderValue, bulkGateURL}
 }
 
-func (t *Twilio) Send(to, body string) error {
-	form := url.Values{"From": {t.from}, "To": {to}, "Body": {body}}
-	req, _ := http.NewRequest(http.MethodPost,
-		"https://api.twilio.com/2010-04-01/Accounts/"+url.PathEscape(t.sid)+"/Messages.json", strings.NewReader(form.Encode()))
-	req.SetBasicAuth(t.sid, t.token)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := httpClient.Do(req)
+func (g *BulkGate) Send(to, body string) error {
+	unicode := false
+	for _, r := range body {
+		if r > 127 {
+			unicode = true
+		}
+	}
+	p := map[string]any{
+		"application_id":    g.id,
+		"application_token": g.token,
+		"number":            strings.TrimPrefix(to, "+"), // international format, no plus
+		"text":              body,
+		"unicode":           unicode,
+		"sender_id":         g.sender,
+		"tag":               "amialive",
+	}
+	if g.senderValue != "" {
+		p["sender_id_value"] = g.senderValue
+	}
+	b, _ := json.Marshal(p)
+	resp, err := httpClient.Post(g.endpoint, "application/json", bytes.NewReader(b))
 	if err != nil {
-		return err
+		return fmt.Errorf("bulkgate: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode/100 != 2 {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return fmt.Errorf("twilio: %s: %s", resp.Status, b)
+	var r struct {
+		Data struct {
+			Status string `json:"status"`
+		} `json:"data"`
+		Type  string `json:"type"`
+		Error string `json:"error"`
+	}
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	_ = json.Unmarshal(raw, &r)
+	if resp.StatusCode/100 != 2 || r.Error != "" || r.Data.Status != "accepted" {
+		return fmt.Errorf("bulkgate: %s: %s (%s)", resp.Status, r.Error, r.Type)
 	}
 	return nil
 }
@@ -123,7 +148,7 @@ func (t *Twilio) Send(to, body string) error {
 // Alerter fans a message out to a contact's email and phone.
 type Alerter struct {
 	Mail *Mailer
-	SMS  *Twilio
+	SMS  *BulkGate
 	Log  *slog.Logger
 }
 

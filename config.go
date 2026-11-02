@@ -39,7 +39,7 @@ type Config struct {
 	SMTPHost, SMTPPort, SMTPUser, SMTPPassword, SMTPFrom string
 	UserEmail                                            string
 
-	TwilioSID, TwilioToken, TwilioFrom string
+	BulkGateID, BulkGateToken, BulkGateSender, BulkGateSenderValue string
 
 	HTTPAddr  string
 	BaseURL   string
@@ -61,23 +61,24 @@ func LoadConfig() (*Config, []Contact, error) {
 	bad := func(format string, a ...any) { errs = append(errs, fmt.Errorf(format, a...)) }
 
 	c := &Config{
-		Name:          env("AMIALIVE_NAME", "Your friend"),
-		DataDir:       env("DATA_DIR", "/data"),
-		ContactsFile:  env("CONTACTS_FILE", "/config/contacts.json"),
-		TelegramToken: env("TELEGRAM_BOT_TOKEN", ""),
-		SMTPHost:      env("SMTP_HOST", ""),
-		SMTPPort:      env("SMTP_PORT", "587"),
-		SMTPUser:      env("SMTP_USER", ""),
-		SMTPPassword:  env("SMTP_PASSWORD", ""),
-		SMTPFrom:      env("SMTP_FROM", ""),
-		UserEmail:     env("USER_EMAIL", ""),
-		TwilioSID:     env("TWILIO_ACCOUNT_SID", ""),
-		TwilioToken:   env("TWILIO_AUTH_TOKEN", ""),
-		TwilioFrom:    env("TWILIO_FROM", ""),
-		HTTPAddr:      env("HTTP_ADDR", ":8080"),
-		BaseURL:       strings.TrimRight(env("BASE_URL", ""), "/"),
-		Secret:        env("CHECKIN_SECRET", ""),
-		Heartbeat:     env("HEARTBEAT_URL", ""),
+		Name:                env("AMIALIVE_NAME", "Your friend"),
+		DataDir:             env("DATA_DIR", "/data"),
+		ContactsFile:        env("CONTACTS_FILE", "/config/contacts.json"),
+		TelegramToken:       env("TELEGRAM_BOT_TOKEN", ""),
+		SMTPHost:            env("SMTP_HOST", ""),
+		SMTPPort:            env("SMTP_PORT", "587"),
+		SMTPUser:            env("SMTP_USER", ""),
+		SMTPPassword:        env("SMTP_PASSWORD", ""),
+		SMTPFrom:            env("SMTP_FROM", ""),
+		UserEmail:           env("USER_EMAIL", ""),
+		BulkGateID:          env("BULKGATE_APPLICATION_ID", ""),
+		BulkGateToken:       env("BULKGATE_APPLICATION_TOKEN", ""),
+		BulkGateSender:      env("BULKGATE_SENDER_ID", "gSystem"),
+		BulkGateSenderValue: env("BULKGATE_SENDER_ID_VALUE", ""),
+		HTTPAddr:            env("HTTP_ADDR", ":8080"),
+		BaseURL:             strings.TrimRight(env("BASE_URL", ""), "/"),
+		Secret:              env("CHECKIN_SECRET", ""),
+		Heartbeat:           env("HEARTBEAT_URL", ""),
 	}
 
 	var err error
